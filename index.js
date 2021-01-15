@@ -2,6 +2,7 @@ const osu = require("node-os-utils");
 const cpu = osu.cpu;
 const drive = osu.drive;
 const mem = osu.mem;
+
 const cpu_usage = {
   run: () => cpu.usage(),
   isAsync: true,
