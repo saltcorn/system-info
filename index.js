@@ -6,6 +6,8 @@ const mem = osu.mem;
 const cpu_usage = {
   run: () => cpu.usage(),
   isAsync: true,
+  description: "System CPU load",
+  arguments: [],
 };
 
 const drive_usage = {
@@ -14,13 +16,17 @@ const drive_usage = {
     return parseFloat(di.usedPercentage);
   },
   isAsync: true,
+  arguments: [],
+  description: "System disk occupancy, (%)",
 };
 const mem_usage = {
   run: async () => {
     const mi = await mem.info();
     return 100 - mi.freeMemPercentage;
   },
+  description: "System memory occupancy, (%)",
   isAsync: true,
+  arguments: [],
 };
 
 module.exports = {
