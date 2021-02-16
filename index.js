@@ -49,6 +49,6 @@ const mem_usage = {
 
 module.exports = {
   sc_plugin_api_version: 1,
-  functions: { cpu_usage, drive_usage, mem_usage, proc_table },
+  functions: { cpu_usage, drive_usage, mem_usage },
   external_tables: {},
 };
