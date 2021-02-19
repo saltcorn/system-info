@@ -13,7 +13,7 @@ const cpu_usage = {
 const processes = json_list_to_external_table(async () => {
   return (await si.processes()).list;
 }, [
-  { name: "pid", type: "Integer" },
+  { name: "pid", type: "Integer", primary_key: true },
   { name: "name", type: "String" },
   { name: "cpu", type: "Float" },
   { name: "mem", type: "Float" },
