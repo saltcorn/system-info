@@ -3,16 +3,9 @@ const { json_list_to_external_table } = require("@saltcorn/data/plugin-helper");
 
 const child_process = require("child_process");
 
-function spawn(instruction, spawnOpts = {}) {
+function spawn(command, args, spawnOpts = {}) {
     return new Promise((resolve, reject) => {
         let errorData = "";
-
-        const [command, ...args] = instruction.split(/\s+/);
-
-        if (process.env.DEBUG_COMMANDS === "true") {
-            console.log(`Executing \`${instruction}\``);
-            console.log("Command", command, "Args", args);
-        }
 
         const spawnedProcess = child_process.spawn(command, args, spawnOpts);
 
@@ -31,7 +24,7 @@ function spawn(instruction, spawnOpts = {}) {
 
         spawnedProcess.on("close", function(code) {
             if (code > 0) {
-                return reject(new Error(`${errorData} (Failed Instruction: ${instruction})`));
+                return reject(new Error(`${errorData} (Failed Instruction: ${command} ${args.join(" ")})`));
             }
 
             resolve(data);
@@ -64,13 +57,39 @@ const processes = json_list_to_external_table(async () => {
 
 const journald_log = json_list_to_external_table(
   async ({ where }) => {
-    let qs = " -o json";
-    if (where?.unit) qs += ` -u ${where.unit}`;
-    if (where?.hours_ago?.lt)
-      qs += ` --since "${where.hours_ago.lt} hours ago"`;
-    const sout = await spawn(`journalctl${qs}`);
+    console.log("journal where", where);
+    let setSince = false
+    let qs = ["-o","json"];
+    if (where?.unit?.ilike) {
+      qs.push("-u");qs.push(where.unit.ilike);
+    } else if (where?.unit) {
+      qs.push("-u");qs.push(where.unit);
+    };
+    if (where?.hours_ago?.lt){
+      qs.push("--since")
+      qs.push(`${where.hours_ago.lt} hours ago`)
+      setSince = true
+    }
+    if (Array.isArray(where?.hours_ago)) {
+      for (const wh of where?.hours_ago) {
+        if(wh.lt) {
+          qs.push("--since")
+          qs.push(`${wh.lt} hours ago`)
+      setSince = true
+
+    
+        }
+        
+      }
+    }
+    if(!setSince){
+      qs.push("--since")
+      qs.push(`1 hour ago`)
+    }
+    console.log({qs});
+    const sout = await spawn(`journalctl`, qs);
     const now = new Date();
-    return sout.split("\n").map((s) => {
+    const rows = sout.split("\n").map((s) => {
       let o
       try{
        o = JSON.parse(s);}
@@ -84,6 +103,8 @@ const journald_log = json_list_to_external_table(
         hours_ago: Math.abs(now - time) / 36e5,
       };
     }).filter(o=>o);
+    console.log({rows});
+    return rows
   },
   [
     { name: "realtime_timestamp", type: "String", primary_key: true },
