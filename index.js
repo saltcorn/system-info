@@ -26,10 +26,10 @@ const journald_log = json_list_to_external_table(
     if (where?.unit) qs += ` -u ${where.unit}`;
     if (where?.hours_ago?.lt)
       qs += ` --since "${where.hours_ago.lt} hours ago"`;
-
-    const sout = (revision = require("child_process")
+    console.log(qs);
+    const sout = require("child_process")
       .execSync(`journalctl${qs}`, { stdio: "pipe" })
-      .toString());
+      .toString();
     const now = new Date();
     return sout.split("\n").map((s) => {
       const o = JSON.parse(s);
