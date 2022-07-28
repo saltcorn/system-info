@@ -4,36 +4,36 @@ const { json_list_to_external_table } = require("@saltcorn/data/plugin-helper");
 const child_process = require("child_process");
 
 function spawn(command, args, spawnOpts = {}) {
-    return new Promise((resolve, reject) => {
-        let errorData = "";
+  return new Promise((resolve, reject) => {
+    let errorData = "";
 
-        const spawnedProcess = child_process.spawn(command, args, spawnOpts);
+    const spawnedProcess = child_process.spawn(command, args, spawnOpts);
 
-        let data = "";
+    let data = "";
 
-        spawnedProcess.on("message", console.log);
+    spawnedProcess.on("message", console.log);
 
-        spawnedProcess.stdout.on("data", chunk => {
-          
-            data += chunk.toString();
-        });
+    spawnedProcess.stdout.on("data", chunk => {
 
-        spawnedProcess.stderr.on("data", chunk => {
-            errorData += chunk.toString();
-        });
-
-        spawnedProcess.on("close", function(code) {
-            if (code > 0) {
-                return reject(new Error(`${errorData} (Failed Instruction: ${command} ${args.join(" ")})`));
-            }
-
-            resolve(data);
-        });
-
-        spawnedProcess.on("error", function(err) {
-            reject(err);
-        });
+      data += chunk.toString();
     });
+
+    spawnedProcess.stderr.on("data", chunk => {
+      errorData += chunk.toString();
+    });
+
+    spawnedProcess.on("close", function (code) {
+      if (code > 0) {
+        return reject(new Error(`${errorData} (Failed Instruction: ${command} ${args.join(" ")})`));
+      }
+
+      resolve(data);
+    });
+
+    spawnedProcess.on("error", function (err) {
+      reject(err);
+    });
+  });
 }
 
 const cpu_usage = {
@@ -59,41 +59,39 @@ const journald_log = json_list_to_external_table(
   async ({ where }) => {
     console.log("journal where", where);
     let setSince = false
-    let qs = ["-o","json"];
+    let qs = ["-o", "json"];
     if (where?.unit?.ilike) {
-      qs.push("-u");qs.push(where.unit.ilike);
+      qs.push("-u"); qs.push(where.unit.ilike);
     } else if (where?.unit) {
-      qs.push("-u");qs.push(where.unit);
+      qs.push("-u"); qs.push(where.unit);
     };
-    if (where?.hours_ago?.lt){
+    if (where?.hours_ago?.lt) {
       qs.push("--since")
       qs.push(`${where.hours_ago.lt} hours ago`)
       setSince = true
     }
     if (Array.isArray(where?.hours_ago)) {
       for (const wh of where?.hours_ago) {
-        if(wh.lt) {
+        if (wh.lt) {
           qs.push("--since")
           qs.push(`${wh.lt} hours ago`)
-      setSince = true
-
-    
+          setSince = true
         }
-        
       }
     }
-    if(!setSince){
+    if (!setSince) {
       qs.push("--since")
       qs.push(`1 hour ago`)
     }
-    console.log({qs});
+    console.log({ qs });
     const sout = await spawn(`journalctl`, qs);
     const now = new Date();
     const rows = sout.split("\n").map((s) => {
       let o
-      try{
-       o = JSON.parse(s);}
-      catch(e) { return null}
+      try {
+        o = JSON.parse(s);
+      }
+      catch (e) { return null }
       const time = new Date(+o.__REALTIME_TIMESTAMP / 1000);
       return {
         realtime_timestamp: o.__REALTIME_TIMESTAMP,
@@ -102,8 +100,8 @@ const journald_log = json_list_to_external_table(
         time,
         hours_ago: Math.abs(now - time) / 36e5,
       };
-    }).filter(o=>o);
-    console.log({rows});
+    }).filter(o => o);
+    console.log({ rows });
     return rows
   },
   [
