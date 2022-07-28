@@ -57,13 +57,12 @@ const processes = json_list_to_external_table(async () => {
 
 const journald_log = json_list_to_external_table(
   async ({ where }) => {
-    console.log("journal where", where);
     let setSince = false
     let qs = ["-o", "json"];
     if (where?.unit?.ilike) {
-      qs.push("-u"); qs.push(where.unit.ilike);
+      qs.push("-t"); qs.push(where.unit.ilike);
     } else if (where?.unit) {
-      qs.push("-u"); qs.push(where.unit);
+      qs.push("-t"); qs.push(where.unit);
     };
     if (where?.hours_ago?.lt) {
       qs.push("--since")
@@ -83,7 +82,6 @@ const journald_log = json_list_to_external_table(
       qs.push("--since")
       qs.push(`1 hour ago`)
     }
-    console.log({ qs });
     const sout = await spawn(`journalctl`, qs);
     const now = new Date();
     const rows = sout.split("\n").map((s) => {
@@ -101,7 +99,6 @@ const journald_log = json_list_to_external_table(
         hours_ago: Math.abs(now - time) / 36e5,
       };
     }).filter(o => o);
-    console.log({ rows });
     return rows
   },
   [
