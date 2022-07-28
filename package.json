@@ -1,6 +1,6 @@
 {
   "name": "@saltcorn/system-info",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "System information: cpu load, disk usage",
   "main": "index.js",
   "dependencies": {
