@@ -1,6 +1,48 @@
 const si = require("systeminformation");
 const { json_list_to_external_table } = require("@saltcorn/data/plugin-helper");
 
+const child_process = require("child_process");
+
+function spawn(instruction, spawnOpts = {}) {
+    return new Promise((resolve, reject) => {
+        let errorData = "";
+
+        const [command, ...args] = instruction.split(/\s+/);
+
+        if (process.env.DEBUG_COMMANDS === "true") {
+            console.log(`Executing \`${instruction}\``);
+            console.log("Command", command, "Args", args);
+        }
+
+        const spawnedProcess = child_process.spawn(command, args, spawnOpts);
+
+        let data = "";
+
+        spawnedProcess.on("message", console.log);
+
+        spawnedProcess.stdout.on("data", chunk => {
+          
+            data += chunk.toString();
+        });
+
+        spawnedProcess.stderr.on("data", chunk => {
+            errorData += chunk.toString();
+        });
+
+        spawnedProcess.on("close", function(code) {
+            if (code > 0) {
+                return reject(new Error(`${errorData} (Failed Instruction: ${instruction})`));
+            }
+
+            resolve(data);
+        });
+
+        spawnedProcess.on("error", function(err) {
+            reject(err);
+        });
+    });
+}
+
 const cpu_usage = {
   run: async () => {
     return (await si.currentLoad()).currentLoad;
@@ -22,17 +64,17 @@ const processes = json_list_to_external_table(async () => {
 
 const journald_log = json_list_to_external_table(
   async ({ where }) => {
-    let qs = "";
+    let qs = " -o json";
     if (where?.unit) qs += ` -u ${where.unit}`;
     if (where?.hours_ago?.lt)
       qs += ` --since "${where.hours_ago.lt} hours ago"`;
-    console.log(qs);
-    const sout = require("child_process")
-      .execSync(`journalctl${qs}`, { stdio: "pipe" })
-      .toString();
+    const sout = await spawn(`journalctl${qs}`);
     const now = new Date();
     return sout.split("\n").map((s) => {
-      const o = JSON.parse(s);
+      let o
+      try{
+       o = JSON.parse(s);}
+      catch(e) { return null}
       const time = new Date(+o.__REALTIME_TIMESTAMP / 1000);
       return {
         realtime_timestamp: o.__REALTIME_TIMESTAMP,
@@ -41,7 +83,7 @@ const journald_log = json_list_to_external_table(
         time,
         hours_ago: Math.abs(now - time) / 36e5,
       };
-    });
+    }).filter(o=>o);
   },
   [
     { name: "realtime_timestamp", type: "String", primary_key: true },
