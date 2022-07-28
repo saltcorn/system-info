@@ -23,9 +23,9 @@ const processes = json_list_to_external_table(async () => {
 const journald_log = json_list_to_external_table(
   async ({ where }) => {
     let qs = "";
-    if (where.unit) qs += ` -u ${where.unit}`;
-    if (where.hours_ago?.lt)
-      qs += ` --since "${where.hours_ago?.lt} hours ago"`;
+    if (where?.unit) qs += ` -u ${where.unit}`;
+    if (where?.hours_ago?.lt)
+      qs += ` --since "${where.hours_ago.lt} hours ago"`;
 
     const sout = (revision = require("child_process")
       .execSync(`journalctl${qs}`, { stdio: "pipe" })
